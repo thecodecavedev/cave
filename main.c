@@ -16,7 +16,7 @@ int main(int argc, char *argv[], char *envp[]) {
 
   printf("\nCAVE SHELL\n");
   while (1) {
-    printf("enter command$ ");
+    printf("$ ");
     fgets(command, MAX_BUFFER_SIZE, stdin);
     if ((strlen(command) > 0) && (command[strlen(command) - 1] == '\n')) {
       command[strlen(command) - 1] = '\0';
@@ -29,6 +29,7 @@ int main(int argc, char *argv[], char *envp[]) {
     while (token != NULL) {
       command_args[count] = token;
       count++;
+
       token = strtok(NULL, " ");
     }
     command_args[count] = NULL;
@@ -41,39 +42,47 @@ int main(int argc, char *argv[], char *envp[]) {
 int find_in_path(char *command, char *args[], char *envp[]) {
   char *_path;
   char *directory;
-  for (int i = 0; envp[i] != NULL; i++) {
-    if (envp[i][0] == 'P' && envp[i][1] == 'A' && envp[i][2] == 'T' &&
-        envp[i][3] == 'H') {
-      _path = envp[i];
-    }
-  }
-  memmove(_path, _path + 5, strlen(_path) + 1 - 5);
+  int not_found = 1;
+  _path = getenv("PATH");
+
   if (strlen(_path) == 0) {
     perror("cave shell path error");
     return 1;
   } else {
-    directory = strtok(_path, ":");
+    char *temp_path;
+    memcpy(temp_path, _path, strlen(_path));
+    directory = strtok(temp_path, ":");
     char temp_directory[PATH_MAX];
+
     while (directory != NULL) {
 
       snprintf(temp_directory, sizeof(temp_directory), "%s/%s", directory,
                command);
 
-      if (access(temp_directory, F_OK) == 0) {
+      if (access(temp_directory, X_OK) == 0) {
         // Run the process
+        not_found = 0;
         int pid = fork();
         if (pid == 0) {
           // child process
           execv(temp_directory, args);
-          return 0;
+
+          perror("cave shell progam execute error");
+          exit(1);
+
+          // return 0;
         }
-        if (pid == 1) {
+        if (pid > 1) {
           // parent process
           waitpid(pid, NULL, 0);
         }
+        return 0;
       }
 
       directory = strtok(NULL, ":");
+    }
+    if (not_found == 1) {
+      perror("cave");
     }
     return 0;
   }
