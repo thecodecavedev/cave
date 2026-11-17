@@ -1,23 +1,34 @@
 #include <linux/limits.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define MAX_BUFFER_SIZE 256
+// #define MAX_BUFFER_SIZE 256
 
 int find_in_path(char *command, char *args[], char *envp[]);
 
 int main(int argc, char *argv[], char *envp[]) {
   char *token;
-  char *command = malloc(MAX_BUFFER_SIZE);
+  size_t size = 0;
+  ssize_t nread;
+  char *command = NULL;
+
   char *command_pointer;
   char *command_args[60];
 
   printf("\nCAVE SHELL\n");
   while (1) {
     printf("$ ");
-    fgets(command, MAX_BUFFER_SIZE, stdin);
+    nread = getline(&command, &size, stdin);
+    // fgets(command, MAX_BUFFER_SIZE, stdin);
+    if (nread == -1) {
+      break;
+    }
+    if (strlen(command) == 1 && command[strlen(command) - 1] == '\n') {
+      continue;
+    }
     if ((strlen(command) > 0) && (command[strlen(command) - 1] == '\n')) {
       command[strlen(command) - 1] = '\0';
     }
@@ -49,7 +60,7 @@ int find_in_path(char *command, char *args[], char *envp[]) {
     perror("cave shell path error");
     return 1;
   } else {
-    char *temp_path;
+    char *temp_path = malloc(strlen(_path) + 1);
     memcpy(temp_path, _path, strlen(_path));
     directory = strtok(temp_path, ":");
     char temp_directory[PATH_MAX];
@@ -72,16 +83,18 @@ int find_in_path(char *command, char *args[], char *envp[]) {
 
           // return 0;
         }
-        if (pid > 1) {
+        if (pid > 0) {
           // parent process
           waitpid(pid, NULL, 0);
         }
+        free(temp_path);
         return 0;
       }
 
       directory = strtok(NULL, ":");
     }
     if (not_found == 1) {
+      free(temp_path);
       perror("cave");
     }
     return 0;
